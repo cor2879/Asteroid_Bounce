@@ -1,0 +1,101 @@
+{{ 'asteroid-bounce.css' | asset_url | stylesheet_tag }}
+
+<script>
+  window.AsteroidBounceAssets = Object.assign({}, window.AsteroidBounceAssets, {
+    '/images/MainBG.jpg': {{ 'asteroid-bounce-main-bg.jpg' | asset_url | json }},
+    '/images/LeftPaddle.gif': {{ 'asteroid-bounce-left-paddle.gif' | asset_url | json }},
+    '/images/RightPaddle.gif': {{ 'asteroid-bounce-right-paddle.gif' | asset_url | json }},
+    '/images/Ball.gif': {{ 'asteroid-bounce-ball.gif' | asset_url | json }},
+    '/images/RetroPause.png': {{ 'asteroid-bounce-pause.png' | asset_url | json }},
+    '/images/RetroPlay.png': {{ 'asteroid-bounce-play.png' | asset_url | json }},
+    '/soundeffects/BANGLRG.WAV': {{ 'asteroid-bounce-large-bang.wav' | asset_url | json }},
+    '/soundeffects/BANGMED.WAV': {{ 'asteroid-bounce-medium-bang.wav' | asset_url | json }},
+    '/soundeffects/Lose.wav': {{ 'asteroid-bounce-lose.wav' | asset_url | json }},
+    '/soundeffects/BLIP.WAV': {{ 'asteroid-bounce-blip.wav' | asset_url | json }},
+    '/soundeffects/008166431-retro-sfx-22.wav': {{ 'asteroid-bounce-score.wav' | asset_url | json }},
+    '/soundeffects/022802605-8bit-retro-game-over.wav': {{ 'asteroid-bounce-game-over.wav' | asset_url | json }},
+    '/soundeffects/022802601-8bit-retro-victory-melody.wav': {{ 'asteroid-bounce-victory.wav' | asset_url | json }}
+  });
+</script>
+
+<section class="vp-arcade" aria-labelledby="vp-arcade-title-{{ section.id }}">
+  <div class="vp-arcade__intro page-width">
+    <p class="vp-arcade__eyebrow">{{ 'sections.asteroid_bounce.eyebrow' | t }}</p>
+    <h1 id="vp-arcade-title-{{ section.id }}" class="vp-arcade__title">{{ 'sections.asteroid_bounce.title' | t }}</h1>
+    <p class="vp-arcade__description">{{ 'sections.asteroid_bounce.description' | t }}</p>
+  </div>
+
+  <div id="asteroid-bounce-root" class="vp-arcade__game"></div>
+
+  <p class="vp-arcade__controls page-width">{{ 'sections.asteroid_bounce.controls' | t }}</p>
+</section>
+
+<script type="module" src="{{ 'asteroid-bounce.js' | asset_url }}"></script>
+
+{% stylesheet %}
+  .vp-arcade {
+    padding: clamp(2rem, 5vw, 5rem) 0;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(104, 47, 145, 0.24), transparent 38rem),
+      #050308;
+    color: #f8f2e7;
+  }
+
+  .vp-arcade__intro {
+    margin-bottom: clamp(1.5rem, 3vw, 3rem);
+    text-align: center;
+  }
+
+  .vp-arcade__eyebrow {
+    margin: 0 0 0.75rem;
+    color: #d6aa58;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .vp-arcade__title {
+    margin: 0;
+    color: #fff8e9;
+    font-size: clamp(2.5rem, 7vw, 5.5rem);
+    line-height: 0.95;
+  }
+
+  .vp-arcade__description {
+    max-width: 48rem;
+    margin: 1.25rem auto 0;
+    color: rgba(248, 242, 231, 0.78);
+    font-size: clamp(1rem, 2vw, 1.2rem);
+  }
+
+  .vp-arcade__game {
+    width: min(100%, 1600px);
+    margin: 0 auto;
+  }
+
+  .vp-arcade__controls {
+    margin-top: 1rem;
+    color: rgba(248, 242, 231, 0.68);
+    font-size: 0.9rem;
+    text-align: center;
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "t:sections.asteroid_bounce.name",
+  "tag": "section",
+  "class": "section",
+  "limit": 1,
+  "settings": [],
+  "presets": [
+    {
+      "name": "t:sections.asteroid_bounce.name"
+    }
+  ],
+  "enabled_on": {
+    "templates": ["page"]
+  }
+}
+{% endschema %}
