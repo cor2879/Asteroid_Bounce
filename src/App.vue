@@ -12,15 +12,12 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import pongGame from './game/pong.js';
-import Utilities from './game/Utilities.js';
 
 const viewport = ref(null);
 let game = null;
 
 onMounted(() => {
-  window.Utilities = Utilities;
   game = new pongGame(viewport.value);
-  window.PongGame = game;
 });
 
 onBeforeUnmount(() => {
@@ -28,8 +25,6 @@ onBeforeUnmount(() => {
     game.destroy();
   }
 
-  if (window.PongGame === game) {
-    delete window.PongGame;
-  }
+  game = null;
 });
 </script>
