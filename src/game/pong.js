@@ -20,6 +20,8 @@
  
 import Utilities from './Utilities.js';
 
+let instanceCounter = 0;
+
 const resolveAsset = (path) => {
     const assets = window.AsteroidBounceAssets || {};
     const normalizedPath = path.replace(/^\/+/, '');
@@ -39,6 +41,11 @@ var pongGame = function(parent, gameState) {
     this.paused = true;
     this._destroyed = false;
     this._loopTimer = null;
+    this._pointerId = null;
+    this.instanceId = 'asteroid-bounce-' + (++instanceCounter);
+    this.keys = {};
+    this.isPointerUpPressed = false;
+    this.isPointerDownPressed = false;
     
     this.parent = ((parent) ? parent : document.body);
     
@@ -59,19 +66,7 @@ pongGame.ASPECT_RATIO = 16/9;
 pongGame.MAX_BOARD_WIDTH = 1600;
 pongGame.MIN_BOARD_WIDTH = 320;
 pongGame.MAX_BALL_SPEED = 30;
-pongGame.keys = {};
-
-pongGame.DefaultMaxPaddleSpeed = window.innerHeight / 20;
-pongGame.ClickMargin = window.innerWidth / 10;
 pongGame.GameLoopInterval = 50;
-
-window.addEventListener('keydown', (e) => {
-    pongGame.keys[e.keyCode] = true;
-});
-
-window.addEventListener('keyup', (e) => {
-    pongGame.keys[e.keyCode] = false;
-});
 
 pongGame.prototype = {
 
@@ -84,17 +79,24 @@ pongGame.prototype = {
             this._loopTimer = null;
         }
 
-        if (this._onKeyPress) {
-            window.document.removeEventListener('keydown', this._onKeyPress, false);
+        if (this.board && this._onKeyDown) {
+            this.board.removeEventListener('keydown', this._onKeyDown, false);
         }
 
-        if (this._onMouseDown) {
-            window.document.removeEventListener('mousedown', this._onMouseDown, false);
+        if (this.board && this._onKeyUp) {
+            this.board.removeEventListener('keyup', this._onKeyUp, false);
         }
 
-        if (this._onMouseUp) {
-            window.document.removeEventListener('mouseup', this._onMouseUp, false);
+        if (this.board && this._onPointerDown) {
+            this.board.removeEventListener('pointerdown', this._onPointerDown, false);
+            this.board.removeEventListener('pointermove', this._onPointerMove, false);
+            this.board.removeEventListener('pointerup', this._onPointerUp, false);
+            this.board.removeEventListener('pointercancel', this._onPointerUp, false);
         }
+
+        this.keys = {};
+        this.isPointerUpPressed = false;
+        this.isPointerDownPressed = false;
 
         if (this.board && this.board.parentNode) {
             this.board.parentNode.removeChild(this.board);
@@ -120,22 +122,27 @@ pongGame.prototype = {
                 document.body.appendChild(this.board);
             }
 
-            this._onKeyPress = this.onKeyPress.bind(this);
-            this._onMouseDown = this.mousedown.bind(this);
-            this._onMouseUp = this.mouseup.bind(this);
+            this._onKeyDown = this.keydown.bind(this);
+            this._onKeyUp = this.keyup.bind(this);
+            this._onPointerDown = this.pointerdown.bind(this);
+            this._onPointerMove = this.pointermove.bind(this);
+            this._onPointerUp = this.pointerup.bind(this);
 
-            window.document.addEventListener('keydown', this._onKeyPress, false);
-            window.document.addEventListener('mousedown', this._onMouseDown, false);
-            window.document.addEventListener('mouseup', this._onMouseUp, false);
+            this.board.addEventListener('keydown', this._onKeyDown, false);
+            this.board.addEventListener('keyup', this._onKeyUp, false);
+            this.board.addEventListener('pointerdown', this._onPointerDown, false);
+            this.board.addEventListener('pointermove', this._onPointerMove, false);
+            this.board.addEventListener('pointerup', this._onPointerUp, false);
+            this.board.addEventListener('pointercancel', this._onPointerUp, false);
         }
 
-        pongGame.MaxAiSpeed = pongGame.DefaultMaxPaddleSpeed;
-        pongGame.PlayerSpeed = pongGame.DefaultMaxPaddleSpeed;
-        pongGame.BallStartSpeed = this.board.getDimensions().width / 250;
+        this.maxAiSpeed = this.board.getDimensions().height / 20;
+        this.playerSpeed = this.maxAiSpeed;
+        this.ballStartSpeed = this.board.getDimensions().width / 250;
     },
 
     isKeyPressed: function (keyCode) {
-        return !!pongGame.keys[keyCode];
+        return !!this.keys[keyCode];
     },
 
     load: function (gameState) {
@@ -217,25 +224,57 @@ pongGame.prototype = {
         Utilities.hideObject(this.board.Title);
     },
 
-    onKeyPress: function(e) {
-        var evt = (e) ? e : ((window.event) ? event : null);
+    keydown: function(e) {
+        const keyCode = e.keyCode;
+        const isGameKey = keyCode == pongGame.PADDLE_UP ||
+            keyCode == pongGame.PADDLE_DOWN ||
+            keyCode == pongGame.SPACEBAR;
 
-        if (!evt) {
+        if (!isGameKey) {
             return;
         }
 
-        if (evt.keyCode == pongGame.SPACEBAR) {
+        e.preventDefault();
+        this.keys[keyCode] = true;
+
+        if (keyCode == pongGame.SPACEBAR && !e.repeat) {
             this.board.click();
         }
     },
 
-    mousedown: function(e) {
-        const evt = e || window.event;
-        if (!evt) return;
+    keyup: function(e) {
+        if (e.keyCode == pongGame.PADDLE_UP ||
+            e.keyCode == pongGame.PADDLE_DOWN ||
+            e.keyCode == pongGame.SPACEBAR) {
+            e.preventDefault();
+            this.keys[e.keyCode] = false;
+        }
+    },
 
-        const game = this.game || this; // defensive for older bindings
-        const board = game.board;
-        if (!board) return;
+    pointerdown: function(e) {
+        if (e.button != null && e.button !== 0) {
+            return;
+        }
+
+        this._pointerId = e.pointerId;
+        this.board.focus({ preventScroll: true });
+
+        if (this.board.setPointerCapture) {
+            this.board.setPointerCapture(e.pointerId);
+        }
+
+        this.updatePointerInput(e);
+    },
+
+    pointermove: function(e) {
+        if (this._pointerId === e.pointerId) {
+            this.updatePointerInput(e);
+        }
+    },
+
+    updatePointerInput: function(evt) {
+        const board = this.board;
+        if (!board || !this.leftPaddle) return;
 
         const boardRect = board.getBoundingClientRect();
 
@@ -245,27 +284,27 @@ pongGame.prototype = {
 
         // Only left-side input controls Player 1
         if (localX < boardRect.width * 0.15) {
-            const leftPaddle = document.getElementById('leftPaddle');
-            if (!leftPaddle) return;
-
-            const paddleRect = leftPaddle.getBoundingClientRect();
+            const paddleRect = this.leftPaddle.getBoundingClientRect();
             const paddleCenter =
                 (paddleRect.top + paddleRect.bottom) / 2 - boardRect.top;
 
-            pongGame.IsUpPressed = localY < paddleCenter;
-            pongGame.IsDownPressed = localY > paddleCenter;
+            this.isPointerUpPressed = localY < paddleCenter;
+            this.isPointerDownPressed = localY > paddleCenter;
         }
     },
 
-    mouseup: function (e) {
-        var evt = (e) ? e : ((window.event) ? event : null);
-
-        if (!evt) {
+    pointerup: function (e) {
+        if (this._pointerId !== e.pointerId) {
             return;
         }
 
-        pongGame.IsUpPressed = false;
-        pongGame.IsDownPressed = false;
+        if (this.board.releasePointerCapture && this.board.hasPointerCapture(e.pointerId)) {
+            this.board.releasePointerCapture(e.pointerId);
+        }
+
+        this._pointerId = null;
+        this.isPointerUpPressed = false;
+        this.isPointerDownPressed = false;
     },
 
     // moves the Left Paddle up or down, within the bounds of the game board
@@ -316,12 +355,12 @@ pongGame.prototype = {
         ball.directionX = directionX;
         ball.directionY = directionY;
 
-        if (game.isKeyPressed(pongGame.PADDLE_DOWN) || pongGame.IsDownPressed) {
-            game.movePaddleDown(game.leftPaddle, pongGame.PlayerSpeed);
+        if (game.isKeyPressed(pongGame.PADDLE_DOWN) || game.isPointerDownPressed) {
+            game.movePaddleDown(game.leftPaddle, game.playerSpeed);
         }
 
-        if (game.isKeyPressed(pongGame.PADDLE_UP) || pongGame.IsUpPressed) {
-            game.movePaddleUp(game.leftPaddle, pongGame.PlayerSpeed);
+        if (game.isKeyPressed(pongGame.PADDLE_UP) || game.isPointerUpPressed) {
+            game.movePaddleUp(game.leftPaddle, game.playerSpeed);
         }
 
         game.moveBallY(ball, directionY, speedY);
@@ -536,7 +575,7 @@ pongGame.prototype = {
         const xDir = Math.random() < 0.5 ? -1 : 1;
         const yDir = Math.random() < 0.5 ? -1 : 1;
 
-        this.update(ball, xDir, yDir, pongGame.BallStartSpeed, pongGame.BallStartSpeed);
+        this.update(ball, xDir, yDir, this.ballStartSpeed, this.ballStartSpeed);
     },
 
     getScores: function() {
@@ -561,7 +600,7 @@ pongGame.prototype = {
 
         var direction = paddleCenter - ballCenter;
         var magnitude = Math.abs(direction);
-        var speed = (magnitude > pongGame.MaxAiSpeed) ? pongGame.MaxAiSpeed : magnitude;
+        var speed = (magnitude > this.maxAiSpeed) ? this.maxAiSpeed : magnitude;
         
         if (direction && ball.directionX > 0) {
             this.movePaddle(paddle, direction, speed);
@@ -571,7 +610,7 @@ pongGame.prototype = {
 
             var direction = paddleXY.y - boardMiddleDimensions.y;
             var magnitude = Math.abs(direction);
-            var speed = (magnitude > pongGame.MaxAiSpeed) ? pongGame.MaxAiSpeed : magnitude;
+            var speed = (magnitude > this.maxAiSpeed) ? this.maxAiSpeed : magnitude;
 
             if (direction) {
                 this.movePaddle(paddle, direction, speed);
@@ -591,7 +630,10 @@ pongGame.prototype = {
 pongGame.createGameBoard = function(backgroundImg, onStartClick, game) {
     var board = document.createElement('div');
 
-    board.id = 'pongGame';
+    board.id = game.instanceId + '-board';
+    board.className = 'asteroid-bounce-board';
+    board.tabIndex = 0;
+    board.setAttribute('aria-label', 'Asteroid Bounce game. Use the up and down arrow keys to move the left paddle.');
     board.game = game;
     game.board = board;
     const parentWidth = game.parent.clientWidth;
@@ -647,7 +689,7 @@ pongGame.createGameBoard = function(backgroundImg, onStartClick, game) {
 
 pongGame.createTitle = function(text, backColor, textColor, onStartClick, game) {
     var title = document.createElement('div');
-    title.id = 'gameTitle';
+    title.id = game.instanceId + '-title';
     title.game = game;
     title.style.backgroundColor = backColor;
 
@@ -684,7 +726,7 @@ pongGame.createTitle = function(text, backColor, textColor, onStartClick, game) 
 
 pongGame.createPaddle = function(id, imageUrl, game) {
     var paddle = document.createElement('div');
-    paddle.id = id;
+    paddle.id = game.instanceId + '-' + id;
     paddle.style.position = 'absolute';
     paddle.style.zIndex = 5;
     paddle.style.backgroundColor = 'transparent';
@@ -724,7 +766,7 @@ pongGame.createPaddle = function(id, imageUrl, game) {
 
 pongGame.createBall = function(imageUrl, game) {
     var ball = document.createElement('div');
-    ball.id = 'ball';
+    ball.id = game.instanceId + '-ball';
     ball.style.position = 'absolute';
 
     var boardDimensions = game.board.getDimensions();
@@ -765,7 +807,7 @@ pongGame.createBall = function(imageUrl, game) {
 
 pongGame.createScoreBoard = function(id, textColor, game) {
     var scoreBoard = document.createElement('div');
-    scoreBoard.id = id;
+    scoreBoard.id = game.instanceId + '-' + id;
     scoreBoard.style.position = 'absolute';
     scoreBoard.style.backgroundColor = 'transparent';
 
@@ -797,7 +839,7 @@ pongGame.createScoreBoard = function(id, textColor, game) {
 
 pongGame.createUpdater = function(id, textColor, game) {
     var updater = document.createElement('div');
-    updater.id = id;
+    updater.id = game.instanceId + '-' + id;
     updater.style.color = textColor;
     updater.style.textAlign = 'center';
     updater.style.verticalAlign = 'center';
@@ -836,7 +878,7 @@ pongGame.createPlayControl = function (id, game) {
         return Utilities.getDimensions(playControl);
     }
 
-    playControl.id = id;
+    playControl.id = game.instanceId + '-' + id;
 
     playControl.game = game;
     game.playControl = playControl;
