@@ -26,19 +26,22 @@
     #050308;
 }
 
-.asteroid-bounce-app .game-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.asteroid-bounce-app .game-host {
+.asteroid-bounce-app .asteroid-bounce-board {
   position: relative;
   width: 100%;
   max-width: 1600px;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #000;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.asteroid-bounce-app .asteroid-bounce-board:focus-visible {
+  outline: 3px solid #d6aa58;
+  outline-offset: 3px;
 }
 
 @media (max-width: 749px) {
