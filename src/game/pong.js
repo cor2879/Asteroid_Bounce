@@ -1,4 +1,4 @@
-/*
+﻿/*
  * pong.js
  *
  * @author: David Cole
