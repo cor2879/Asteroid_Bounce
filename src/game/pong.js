@@ -1,4 +1,4 @@
-﻿/*
+/*
  * pong.js
  *
  * @author: David Cole
@@ -18,10 +18,27 @@
  *      Enjoy!
  */
  
-import Utilities from './Utilities';
+import Utilities from './Utilities.js';
+
+const resolveAsset = (path) => {
+    const assets = window.AsteroidBounceAssets || {};
+    const normalizedPath = path.replace(/^\/+/, '');
+
+    if (assets[path]) {
+        return assets[path];
+    }
+
+    if (assets[normalizedPath]) {
+        return assets[normalizedPath];
+    }
+
+    return new URL(normalizedPath, new URL(import.meta.env.BASE_URL, window.location.href)).toString();
+};
 
 var pongGame = function(parent, gameState) {
     this.paused = true;
+    this._destroyed = false;
+    this._loopTimer = null;
     
     this.parent = ((parent) ? parent : document.body);
     
@@ -40,7 +57,7 @@ pongGame.PADDLE_UP = 38;
 pongGame.SPACEBAR = 32;
 pongGame.ASPECT_RATIO = 16/9;
 pongGame.MAX_BOARD_WIDTH = 1600;
-pongGame.MIN_BOARD_WIDTH = 800;
+pongGame.MIN_BOARD_WIDTH = 320;
 pongGame.MAX_BALL_SPEED = 30;
 pongGame.keys = {};
 
@@ -58,6 +75,32 @@ window.addEventListener('keyup', (e) => {
 
 pongGame.prototype = {
 
+    destroy: function() {
+        this._destroyed = true;
+        this.paused = true;
+
+        if (this._loopTimer) {
+            window.clearTimeout(this._loopTimer);
+            this._loopTimer = null;
+        }
+
+        if (this._onKeyPress) {
+            window.document.removeEventListener('keydown', this._onKeyPress, false);
+        }
+
+        if (this._onMouseDown) {
+            window.document.removeEventListener('mousedown', this._onMouseDown, false);
+        }
+
+        if (this._onMouseUp) {
+            window.document.removeEventListener('mouseup', this._onMouseUp, false);
+        }
+
+        if (this.board && this.board.parentNode) {
+            this.board.parentNode.removeChild(this.board);
+        }
+    },
+
     getBall: function() {
         return this.ball;
     },
@@ -66,7 +109,7 @@ pongGame.prototype = {
         var game = this;
 
         if (!this.board) {
-            this.board = pongGame.createGameBoard('/images/MainBG.jpg',
+            this.board = pongGame.createGameBoard(resolveAsset('/images/MainBG.jpg'),
             function () { game.load(gameState); }, this);
 
 
@@ -77,16 +120,13 @@ pongGame.prototype = {
                 document.body.appendChild(this.board);
             }
 
-            window.document.addEventListener('keydown', this.onKeyPress, false);
-            window.document.addEventListener(
-                'mousedown',
-                this.mousedown.bind(this),
-                false);
+            this._onKeyPress = this.onKeyPress.bind(this);
+            this._onMouseDown = this.mousedown.bind(this);
+            this._onMouseUp = this.mouseup.bind(this);
 
-            window.document.addEventListener(
-                'mouseup',
-                this.mouseup.bind(this),
-                false);
+            window.document.addEventListener('keydown', this._onKeyPress, false);
+            window.document.addEventListener('mousedown', this._onMouseDown, false);
+            window.document.addEventListener('mouseup', this._onMouseUp, false);
         }
 
         pongGame.MaxAiSpeed = pongGame.DefaultMaxPaddleSpeed;
@@ -108,7 +148,7 @@ pongGame.prototype = {
 
         // Set up left paddle
         if (!this.leftPaddle) {
-            this.leftPaddle = pongGame.createPaddle('leftPaddle', '/images/LeftPaddle.gif', this);
+            this.leftPaddle = pongGame.createPaddle('leftPaddle', resolveAsset('/images/LeftPaddle.gif'), this);
             this.board.appendChild(this.leftPaddle);
         }
 
@@ -121,7 +161,7 @@ pongGame.prototype = {
 
         // Set up right paddle
         if (!this.rightPaddle) {
-            this.rightPaddle = pongGame.createPaddle('rightPaddle', '/images/RightPaddle.gif', this);
+            this.rightPaddle = pongGame.createPaddle('rightPaddle', resolveAsset('/images/RightPaddle.gif'), this);
             this.board.appendChild(this.rightPaddle);
         }
 
@@ -133,7 +173,7 @@ pongGame.prototype = {
         Utilities.showObject(this.rightPaddle);
 
         if (!this.ball) {
-            this.ball = pongGame.createBall('/images/Ball.gif', this);
+            this.ball = pongGame.createBall(resolveAsset('/images/Ball.gif'), this);
             Utilities.hideObject(this.ball);
             this.board.appendChild(this.ball);
         }
@@ -173,8 +213,6 @@ pongGame.prototype = {
 
         this.soundEffects = pongGame.createSoundEffects();
 
-        window.document.addEventListener('mousedown', this.mousedown, false);
-        window.document.addEventListener('mouseup', this.mouseup, false);
         this.startGame(this.ball, gameState);
         Utilities.hideObject(this.board.Title);
     },
@@ -187,7 +225,7 @@ pongGame.prototype = {
         }
 
         if (evt.keyCode == pongGame.SPACEBAR) {
-            document.getElementById('pongGame').click();
+            this.board.click();
         }
     },
 
@@ -425,7 +463,11 @@ pongGame.prototype = {
                 player2Score: game.player2ScoreBoard.getScore()
             };
 
-            setTimeout(function() { game.update(ball, directionX, directionY, speedX, speedY, game) }, pongGame.GameLoopInterval);
+            game._loopTimer = window.setTimeout(function() {
+            if (!game._destroyed) {
+                game.update(ball, directionX, directionY, speedX, speedY, game);
+            }
+        }, pongGame.GameLoopInterval);
         }
     },
 
@@ -567,7 +609,7 @@ pongGame.createGameBoard = function(backgroundImg, onStartClick, game) {
     board.style.height = height + 'px';
 
     if (backgroundImg) {
-        board.style.backgroundImage = 'url(/images/MainBG.jpg)';
+        board.style.backgroundImage = 'url("' + backgroundImg + '")';
         board.style.backgroundSize = 'cover';
         board.style.backgroundPosition = 'center';
     }
@@ -810,14 +852,14 @@ pongGame.createPlayControl = function (id, game) {
     playControl.style.top = (dimensions.height - playControlDimensions.height) + 'px';
     playControl.style.left = playControlXY.x + 'px';
 
-    var pauseImg = Utilities.createImage('/images/RetroPause.png', id + '_pause');
+    var pauseImg = Utilities.createImage(resolveAsset('/images/RetroPause.png'), id + '_pause');
     pauseImg.style.width = '100%';
     pauseImg.style.height = '100%';
     pauseImg.style.display = 'block';
     playControl.appendChild(pauseImg);
     playControl.pauseImg = pauseImg;
 
-    var playImg = Utilities.createImage('/images/RetroPlay.png', id + '_play');
+    var playImg = Utilities.createImage(resolveAsset('/images/RetroPlay.png'), id + '_play');
     playImg.style.width = '100%';
     playImg.style.height = '100%';
     playImg.style.display = 'none';
@@ -833,25 +875,25 @@ pongGame.createSoundEffects = function () {
     var soundEffects = new Object();
 
     soundEffects.largeBang = document.createElement('audio');
-    soundEffects.largeBang.src = '/soundeffects/BANGLRG.WAV';
+    soundEffects.largeBang.src = resolveAsset('/soundeffects/BANGLRG.WAV');
 
     soundEffects.mediumBang = document.createElement('audio');
-    soundEffects.mediumBang.src = '/soundeffects/BANGMED.WAV';
+    soundEffects.mediumBang.src = resolveAsset('/soundeffects/BANGMED.WAV');
 
     soundEffects.lose = document.createElement('audio');
-    soundEffects.lose.src = '/soundeffects/Lose.wav';
+    soundEffects.lose.src = resolveAsset('/soundeffects/Lose.wav');
 
     soundEffects.blip = document.createElement('audio');
-    soundEffects.blip.src = '/soundeffects/BLIP.WAV';
+    soundEffects.blip.src = resolveAsset('/soundeffects/BLIP.WAV');
 
     soundEffects.score = document.createElement('audio');
-    soundEffects.score.src = '/soundeffects/008166431-retro-sfx-22.wav';
+    soundEffects.score.src = resolveAsset('/soundeffects/008166431-retro-sfx-22.wav');
 
     soundEffects.gameOver = document.createElement('audio');
-    soundEffects.gameOver.src = '/soundeffects/022802605-8bit-retro-game-over.wav';
+    soundEffects.gameOver.src = resolveAsset('/soundeffects/022802605-8bit-retro-game-over.wav');
 
     soundEffects.victory = document.createElement('audio');
-    soundEffects.victory.src = '/soundeffects/022802601-8bit-retro-victory-melody.wav';
+    soundEffects.victory.src = resolveAsset('/soundeffects/022802601-8bit-retro-victory-melody.wav');
     
     return soundEffects;
 }

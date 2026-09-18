@@ -1,36 +1,35 @@
 <template>
-  <div id="app">
-    <h1>Asteroid Bounce (Vue Port)</h1>
-
-    <!-- Vue owns this container -->
-    <div id="pong-viewport">
-    </div>
+  <div class="asteroid-bounce-app">
+    <div
+      ref="viewport"
+      class="asteroid-bounce-app__viewport"
+      role="application"
+      aria-label="Asteroid Bounce"
+    ></div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import pongGame from './game/pong.js';
 import Utilities from './game/Utilities.js';
 
-const gameHost = ref(null);
+const viewport = ref(null);
+let game = null;
 
 onMounted(() => {
-  // IMPORTANT: expose Utilties & PongGame to window
   window.Utilities = Utilities;
+  game = new pongGame(viewport.value);
+  window.PongGame = game;
+});
 
-  const gameHost = ref(null)
+onBeforeUnmount(() => {
+  if (game && typeof game.destroy === 'function') {
+    game.destroy();
+  }
 
-  var pong = new pongGame(document.getElementById('pong-viewport'));
-  window.PongGame = pong;
-})
+  if (window.PongGame === game) {
+    delete window.PongGame;
+  }
+});
 </script>
-
-<style scoped>
-#app {
-  text-align: center;
-}
-canvas {
-  border: 1px solid #444;
-}
-</style>
