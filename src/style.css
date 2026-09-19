@@ -15,7 +15,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.asteroid-bounce-app__viewport {
+.asteroid-bounce-app .asteroid-bounce-app__viewport {
   display: flex;
   width: 100%;
   min-height: min(80vh, 1080px);
