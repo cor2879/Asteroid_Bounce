@@ -54,7 +54,7 @@
 .asteroid-bounce-app .asteroid-bounce-board {
   position: relative;
   width: 100%;
-  max-width: 1600px;
+  max-width: 1920px;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #000;
