@@ -821,6 +821,3 @@ Utilities.calculateXYforChildCenterAlign = function(container, child)
 }
 
 export default Utilities;
-
-// legacy global support
-window.Utilities = Utilities;
