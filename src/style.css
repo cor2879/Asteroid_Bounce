@@ -18,7 +18,9 @@
 .asteroid-bounce-app .asteroid-bounce-app__viewport {
   display: flex;
   width: 100%;
-  min-height: min(80vh, 1080px);
+  height: min(80vh, 54vw, 1080px);
+  height: min(80dvh, 54vw, 1080px);
+  min-height: 0;
   align-items: center;
   justify-content: center;
   overflow: hidden;
@@ -87,11 +89,4 @@
   min-height: 100vh;
   min-height: 100dvh;
   background: #000;
-}
-
-@media (max-width: 749px) {
-  .asteroid-bounce-app__viewport {
-    min-height: auto;
-    aspect-ratio: 16 / 9;
-  }
 }
