@@ -256,6 +256,10 @@ pongGame.prototype = {
             return;
         }
 
+        if (this.playControl && this.playControl.contains(e.target)) {
+            return;
+        }
+
         this._pointerId = e.pointerId;
         this.board.focus({ preventScroll: true });
 
