@@ -4,6 +4,7 @@
 }
 
 .asteroid-bounce-app {
+  position: relative;
   width: 100%;
   color: #f8f2e7;
   background: #050308;
@@ -17,13 +18,37 @@
 .asteroid-bounce-app__viewport {
   display: flex;
   width: 100%;
-  min-height: min(75vh, 900px);
+  min-height: min(80vh, 1080px);
   align-items: center;
   justify-content: center;
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 20%, rgba(94, 38, 135, 0.22), transparent 48%),
     #050308;
+}
+
+.asteroid-bounce-app__fullscreen {
+  position: absolute;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 50;
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(214, 170, 88, 0.9);
+  border-radius: 999px;
+  color: #fff8e9;
+  background: rgba(5, 3, 8, 0.88);
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.45);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(0.35rem);
+}
+
+.asteroid-bounce-app__fullscreen:focus-visible {
+  outline: 3px solid #d6aa58;
+  outline-offset: 3px;
 }
 
 .asteroid-bounce-app .asteroid-bounce-board {
@@ -37,11 +62,31 @@
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  transform-origin: center;
+  will-change: transform;
 }
 
 .asteroid-bounce-app .asteroid-bounce-board:focus-visible {
   outline: 3px solid #d6aa58;
   outline-offset: 3px;
+}
+
+.asteroid-bounce-app:fullscreen,
+.asteroid-bounce-app:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: #000;
+}
+
+.asteroid-bounce-app:fullscreen .asteroid-bounce-app__viewport,
+.asteroid-bounce-app:-webkit-full-screen .asteroid-bounce-app__viewport {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #000;
 }
 
 @media (max-width: 749px) {
