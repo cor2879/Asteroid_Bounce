@@ -34,6 +34,8 @@ const showFullscreenControl = computed(
 let game = null;
 let mobileQuery = null;
 let fitFrame = null;
+let mountFrame = null;
+let viewportObserver = null;
 
 const getFullscreenElement = () => (
   document.fullscreenElement || document.webkitFullscreenElement || null
@@ -53,18 +55,26 @@ const fitGameToViewport = () => {
       return;
     }
 
-    if (!isFullscreen.value) {
-      board.style.transform = '';
-      return;
-    }
-
     const scale = Math.min(
       viewport.value.clientWidth / board.offsetWidth,
       viewport.value.clientHeight / board.offsetHeight,
     );
 
-    board.style.transform = `scale(${scale})`;
+    board.style.transform = Math.abs(scale - 1) < 0.001 ? '' : `scale(${scale})`;
   });
+};
+
+const initializeGame = () => {
+  if (
+    game ||
+    !viewport.value ||
+    viewport.value.clientWidth === 0
+  ) {
+    return;
+  }
+
+  game = new pongGame(viewport.value);
+  fitGameToViewport();
 };
 
 const unlockOrientation = () => {
@@ -124,8 +134,6 @@ const toggleFullscreen = async () => {
 };
 
 onMounted(() => {
-  game = new pongGame(viewport.value);
-
   fullscreenSupported.value = Boolean(
     appRoot.value?.requestFullscreen || appRoot.value?.webkitRequestFullscreen,
   );
@@ -142,6 +150,15 @@ onMounted(() => {
   document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
   window.addEventListener('resize', fitGameToViewport);
   window.screen?.orientation?.addEventListener?.('change', fitGameToViewport);
+
+  if (typeof ResizeObserver === 'function') {
+    viewportObserver = new ResizeObserver(() => {
+      initializeGame();
+      fitGameToViewport();
+    });
+    viewportObserver.observe(viewport.value);
+  }
+  mountFrame = window.requestAnimationFrame(initializeGame);
 });
 
 onBeforeUnmount(() => {
@@ -157,6 +174,14 @@ onBeforeUnmount(() => {
   document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
   window.removeEventListener('resize', fitGameToViewport);
   window.screen?.orientation?.removeEventListener?.('change', fitGameToViewport);
+
+  viewportObserver?.disconnect();
+  viewportObserver = null;
+
+  if (mountFrame) {
+    window.cancelAnimationFrame(mountFrame);
+    mountFrame = null;
+  }
 
   if (fitFrame) {
     window.cancelAnimationFrame(fitFrame);
